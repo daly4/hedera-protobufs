@@ -124,20 +124,25 @@ message TransactionRecord {
      bytes alias = 16;
 
     /**
-     * The current balances of any adjusted crypto allowances as a result of this
-     * transaction. This field will only be populated for CryptoAdjustAllowanceTransaction.
+     * The keccak256 hash of the ethereumData. This field will only be populated for 
+     * EthereumTransaction.
      */
-    repeated CryptoAllowance crypto_adjustments = 17;
+    bytes ethereum_hash = 17;
 
     /**
-     * The current balances of any adjusted non-fungible token allowances as a result of this
-     * transaction. This field will only be populated for CryptoAdjustAllowanceTransaction.
+     * List of accounts with the corresponding staking rewards paid as a result of a transaction.
      */
-    repeated NftAllowance nft_adjustments = 18;
+    repeated AccountAmount paid_staking_rewards = 18;
 
-    /**
-     * The current balances of any adjusted fungible token allowances as a result of this
-     * transaction. This field will only be populated for CryptoAdjustAllowanceTransaction.
-     */
-    repeated TokenAllowance token_adjustments = 19;
+    oneof entropy {
+        /**
+         * In the record of a UtilPrng transaction with no output range, a pseudorandom 384-bit string.
+         */
+        bytes prng_bytes = 19;
+
+        /**
+         * In the record of a PRNG transaction with an output range, the output of a PRNG whose input was a 384-bit string.
+         */
+        int32 prng_number = 20;
+    }
 }

@@ -6,7 +6,7 @@ package proto;
  * ‌
  * Hedera Network Services Protobuf
  * ​
- * Copyright (C) 2018 - 2021 Hedera Hashgraph, LLC
+ * Copyright (C) 2018 - 2022 Hedera Hashgraph, LLC
  * ​
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,6 +103,7 @@ message AccountID {
          * in that account, without creating anything, and with no creation fee being charged.
          */
         bytes alias = 4;
+
     }
 }
 
@@ -440,6 +441,11 @@ enum SubType {
      * token with a custom fee schedule
      */
     TOKEN_NON_FUNGIBLE_UNIQUE_WITH_CUSTOM_FEES = 4;
+
+    /**
+     * The resource prices are scoped to a ScheduleCreate containing a ContractCall.
+     */
+    SCHEDULE_CREATE_CONTRACT_CALL = 5;
 }
 
 /**
@@ -868,7 +874,7 @@ enum HederaFunctionality {
     ContractGetInfo = 17;
 
     /**
-     * Smart Contract, get the byte code
+     * Smart Contract, get the runtime code
      */
     ContractGetBytecode = 18;
 
@@ -1109,14 +1115,35 @@ enum HederaFunctionality {
     TokenUnpause = 80;
 
     /**
-     * Approve allowance for a spender relative to the payer account
+     * Approve allowance for a spender relative to the owner account
      */
     CryptoApproveAllowance = 81;
 
     /**
-     * Adjust allowances for a spender relative to the payer account
+     * Deletes granted allowances on owner account
      */
-    CryptoAdjustAllowance = 82;
+    CryptoDeleteAllowance = 82;
+
+    /**
+     * Gets all the information about an account, including balance and allowances. This does not get the list of
+     * account records.
+     */
+    GetAccountDetails = 83;
+
+    /**
+     * Ethereum Transaction
+     */
+    EthereumTransaction = 84;
+
+    /**
+     * Updates the staking info at the end of staking period to indicate new staking period has started.
+     */
+    NodeStakeUpdate = 85;
+
+    /**
+     * Generates a pseudorandom number.
+     */
+    UtilPrng = 86;
 }
 
 /**
@@ -1345,9 +1372,9 @@ message NodeAddress {
     string description = 9;
 
     /**
-     * The amount of tinybars staked to the node
+     * [Deprecated] The amount of tinybars staked to the node
      */
-    int64 stake = 10;
+    int64 stake = 10 [deprecated = true];
 }
 
 /**
@@ -1517,140 +1544,45 @@ message TokenAssociation {
 }
 
 /**
- * An approved allowance of hbar transfers for a spender.
+ * Staking metadata for an account or a contract returned in CryptoGetInfo or ContractGetInfo queries
  */
-message CryptoAllowance {
-    /**
-     * The account ID of the hbar owner (ie. the grantor of the allowance).
-     */
-    AccountID owner = 1;
+message StakingInfo {
 
     /**
-     * The account ID of the spender of the hbar allowance.
+     * If true, this account or contract declined to receive a staking reward.
      */
-    AccountID spender = 2;
+    bool decline_reward = 1;
 
     /**
-     * The amount of the spender's allowance in tinybars.
+     * The staking period during which either the staking settings for this account or contract changed (such as starting
+     * staking or changing staked_node_id) or the most recent reward was earned, whichever is later. If this account or contract
+     * is not currently staked to a node, then this field is not set.
      */
-    int64 amount = 3;
-}
-
-/**
- * An approved allowance of non-fungible token transfers for a spender.
- */
-message NftAllowance {
-    /**
-     * The token that the allowance pertains to.
-     */
-    TokenID tokenId = 1;
+    Timestamp stake_period_start = 2;
 
     /**
-     * The account ID of the token owner (ie. the grantor of the allowance).
+     * The amount in tinybars that will be received in the next reward situation.
      */
-    AccountID owner = 2;
+    int64 pending_reward = 3;
 
     /**
-     * The account ID of the token allowance spender.
+     * The total of balance of all accounts staked to this account or contract.
      */
-    AccountID spender = 3;
+    int64 staked_to_me = 4;
 
     /**
-     * The list of serial numbers that the spender is permitted to transfer.
+     * ID of the account or node to which this account or contract is staking.
      */
-    repeated int64 serialNumbers = 4;
+    oneof staked_id {
 
-    /**
-     * If true, the spender has access to all of the account owner's NFT instances (currently
-     * owned and any in the future). If this field is set to true the serialNumbers field
-     * should be empty.
-     */
-    google.protobuf.BoolValue approvedForAll = 5;
-}
+        /**
+         * The account to which this account or contract is staking.
+         */
+        AccountID staked_account_id = 5;
 
-/**
- * An approved allowance of fungible token transfers for a spender.
- */
-message TokenAllowance {
-    /**
-     * The token that the allowance pertains to.
-     */
-    TokenID tokenId = 1;
-
-    /**
-     * The account ID of the token owner (ie. the grantor of the allowance).
-     */
-    AccountID owner = 2;
-
-    /**
-     * The account ID of the token allowance spender.
-     */
-    AccountID spender = 3;
-
-    /**
-     * The amount of the spender's token allowance.
-     */
-    int64 amount = 4;
-}
-
-/**
- * A granted allowance of hbar transfers for a spender relative to the owner account.
- */
-message GrantedCryptoAllowance {
-    /**
-     * The account ID of the spender of the hbar allowance.
-     */
-    AccountID spender = 1;
-
-    /**
-     * The amount of the spender's allowance in tinybars.
-     */
-    int64 amount = 2;
-}
-
-/**
- * A granted allowance of non-fungible token transfers for a spender relative to the owner account.
- */
-message GrantedNftAllowance {
-    /**
-     * The token that the allowance pertains to.
-     */
-    TokenID token_id = 1;
-
-    /**
-     * The account ID of the token allowance spender.
-     */
-    AccountID spender = 2;
-
-    /**
-     * The list of serial numbers that the spender is permitted to transfer.
-     */
-    repeated int64 serial_numbers = 3;
-
-    /**
-     * If true, the spender has access to all of the account owner's NFT instances (currently
-     * owned and any in the future). If this field is set to true the serialNumbers field
-     * should be empty.
-     */
-    bool approved_for_all = 4;
-}
-
-/**
- * A granted allowance of fungible token transfers for a spender relative to the owner account.
- */
-message GrantedTokenAllowance {
-    /**
-     * The token that the allowance pertains to.
-     */
-    TokenID token_id = 1;
-
-    /**
-     * The account ID of the token allowance spender.
-     */
-    AccountID spender = 2;
-
-    /**
-     * The amount of the spender's token allowance.
-     */
-    int64 amount = 3;
+        /**
+         * The ID of the node this account or contract is staked to.
+         */
+        int64 staked_node_id = 6;
+    }
 }
